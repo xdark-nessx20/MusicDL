@@ -32,6 +32,13 @@ config_ydl = lambda quality: {
     }]
 }
 
+def get_url_info(url, ydl:yt_dlp.YoutubeDL):
+    info = ydl.extract_info(url, download=False)
+    title = info.get('title', 'Audio')
+    artist = info.get('uploader', 'Unknown')
+    duration = info.get('duration', 0)
+    return title, artist, duration
+
 #This function makes the downloads on background
 def download_audio(download_id, url, quality='normal'):
     try:
@@ -56,10 +63,7 @@ def download_audio(download_id, url, quality='normal'):
             })
             
             # get video info
-            info = ydl.extract_info(url, download=False)
-            title = info.get('title', 'Audio')
-            artist = info.get('uploader', 'Unknown')
-            duration = info.get('duration', 0)
+            title, artist, duration = get_url_info(url, ydl)
 
             if not is_music_file(duration):
                 download_status[download_id] = {
@@ -133,6 +137,30 @@ def download():
         'download_id': download_id,
         'status_url': f'/status/{download_id}'
     }), 202
+
+@app.route('/info', methods=['POST'])
+def get_info():
+    data = request.json
+    url = data.get('url')
+
+    if not url: return jsonify({'success': False, 'error': 'No URL provided.'}), 400
+
+    try:
+        title, artist, duration = get_url_info(url, yt_dlp.YoutubeDL({'quiet': True}))
+        is_valid = is_music_file(duration)
+
+        return jsonify({
+            'success': True,
+            'title': title,
+            'artist': artist,
+            'duration': duration,
+            'is_valid': is_valid,
+            'message': 'Valid audio file.' if is_valid else 'Audio too long. Max 1 hour allowed.'
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 
 #Verifies the status of one specific download
 @app.route('/status/<download_id>', methods=['GET'])
