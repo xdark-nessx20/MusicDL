@@ -146,15 +146,17 @@ def get_info():
     if not url: return jsonify({'success': False, 'error': 'No URL provided.'}), 400
 
     try:
-        title, artist, duration = get_url_info(url, yt_dlp.YoutubeDL({'quiet': True}))
+        title, artist, duration = get_url_info(url, yt_dlp.YoutubeDL(
+            {'quiet': True, 'extractaudio': False, 'no_warnings': True}
+        ))
         is_valid = is_music_file(duration)
+        duration_formatted = f"{duration//60:02}:{duration%60:02}"
 
         return jsonify({
             'success': True,
             'title': title,
             'artist': artist,
-            'duration': duration,
-            'is_valid': is_valid,
+            'duration': duration_formatted,
             'message': 'Valid audio file.' if is_valid else 'Audio too long. Max 1 hour allowed.'
         })
     except Exception as e:
